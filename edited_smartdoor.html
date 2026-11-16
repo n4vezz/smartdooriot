@@ -1,0 +1,2664 @@
+<!DOCTYPE html>
+<!-- =====================================================================
+     1. HTML DOCUMENT STRUCTURE
+     Aplikasi Kontrol & Monitoring Pintu Pintar Berbasis ESP32 (Single File)
+     ===================================================================== -->
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#070d1a" />
+  <title>IoT SmartDoor — Kontrol & Monitoring Pintu Pintar ESP32</title>
+
+  <!-- Tipografi Modern: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- ===================================================================
+       2. CSS VARIABLES DAN GLOBAL STYLING
+       =================================================================== -->
+  <style>
+    :root {
+      --bg-base: #070d1a;
+      --bg-elevated: #0d1629;
+      --bg-card: rgba(15, 25, 46, 0.82);
+      --bg-card-hover: rgba(20, 34, 62, 0.92);
+      --bg-input: rgba(7, 13, 26, 0.78);
+      --border-subtle: rgba(148, 163, 184, 0.14);
+      --border-active: rgba(34, 211, 238, 0.45);
+
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+
+      --accent-cyan: #06b6d4;
+      --accent-cyan-bright: #22d3ee;
+      --accent-blue: #3b82f6;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+
+      --radius-sm: 10px;
+      --radius-md: 16px;
+      --radius-lg: 22px;
+      --radius-full: 9999px;
+
+      --shadow-card: 0 18px 40px -15px rgba(2, 6, 23, 0.75), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+      --shadow-glow-cyan: 0 0 24px rgba(6, 182, 212, 0.25);
+      --shadow-glow-emerald: 0 0 24px rgba(16, 185, 129, 0.25);
+
+      --transition-fast: 160ms cubic-bezier(0.22, 1, 0.36, 1);
+      --transition-smooth: 280ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* Mode Kontras / Tampilan Terang Opsional (disimpan di Local Storage) */
+    body.theme-light {
+      --bg-base: #eef3f9;
+      --bg-elevated: #ffffff;
+      --bg-card: rgba(255, 255, 255, 0.88);
+      --bg-card-hover: rgba(255, 255, 255, 0.98);
+      --bg-input: #f1f5f9;
+      --border-subtle: rgba(15, 23, 42, 0.1);
+      --border-active: rgba(2, 132, 199, 0.45);
+
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+
+      --shadow-card: 0 14px 30px -12px rgba(15, 23, 42, 0.1), inset 0 1px 0 0 rgba(255, 255, 255, 0.9);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-base);
+      background-image:
+        radial-gradient(circle at 12% 8%, rgba(6, 182, 212, 0.14), transparent 36%),
+        radial-gradient(circle at 88% 14%, rgba(59, 130, 246, 0.14), transparent 38%),
+        radial-gradient(circle at 50% 100%, rgba(16, 185, 129, 0.07), transparent 45%);
+      color: var(--text-primary);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      transition: background-color var(--transition-smooth), color var(--transition-smooth);
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+    }
+
+    /* ===================================================================
+       3. COMPONENT STYLING
+       =================================================================== */
+    .app-shell {
+      width: 100%;
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 1rem 1rem 3rem;
+    }
+
+    /* Top Header Bar */
+    .top-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.875rem;
+      padding: 1rem 1.25rem;
+      background: var(--bg-card);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      margin-bottom: 1.25rem;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+    }
+
+    .brand-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.22), rgba(59, 130, 246, 0.25));
+      border: 1px solid rgba(34, 211, 238, 0.35);
+      display: grid;
+      place-items: center;
+      color: var(--accent-cyan-bright);
+      flex-shrink: 0;
+    }
+
+    .brand-title {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .brand-subtitle {
+      margin: 0.1rem 0 0;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+
+    .demo-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.2rem 0.6rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-radius: var(--radius-full);
+      background: rgba(245, 158, 11, 0.16);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+
+    body.theme-light .demo-badge {
+      background: rgba(245, 158, 11, 0.18);
+      color: #b45309;
+    }
+
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.2rem 0.6rem;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-radius: var(--radius-full);
+      background: rgba(16, 185, 129, 0.16);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Banner Informasi Mode Demo */
+    .demo-banner {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.85rem;
+      padding: 0.85rem 1.1rem;
+      border-radius: var(--radius-md);
+      background: linear-gradient(90deg, rgba(245, 158, 11, 0.12), rgba(6, 182, 212, 0.08));
+      border: 1px solid rgba(245, 158, 11, 0.32);
+      margin-bottom: 1.25rem;
+      font-size: 0.84rem;
+      color: var(--text-primary);
+    }
+
+    .demo-banner.hidden {
+      display: none;
+    }
+
+    .demo-banner-text strong {
+      color: #fbbf24;
+    }
+
+    body.theme-light .demo-banner-text strong {
+      color: #b45309;
+    }
+
+    /* Bento Grid Utama */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+    }
+
+    .main-top-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+    }
+
+    .secondary-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+    }
+
+    /* Smart Card */
+    .smart-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.35rem;
+      box-shadow: var(--shadow-card);
+      transition: border-color var(--transition-smooth), background var(--transition-smooth), transform var(--transition-fast);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .smart-card:hover {
+      border-color: rgba(148, 163, 184, 0.26);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 1.1rem;
+    }
+
+    .card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .card-caption {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* Door Status Visual & Animation */
+    .door-stage {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem 1rem;
+      border-radius: var(--radius-md);
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      margin-bottom: 1rem;
+      text-align: center;
+      transition: border-color var(--transition-smooth), box-shadow var(--transition-smooth);
+    }
+
+    .door-frame-svg {
+      width: 112px;
+      height: 124px;
+      margin-bottom: 0.65rem;
+    }
+
+    .door-panel-group {
+      transform-origin: 24px 16px;
+      transition: transform 520ms cubic-bezier(0.34, 1.36, 0.64, 1);
+    }
+
+    /* Animasi panel pintu saat TERBUKA */
+    .door-stage[data-state="TERBUKA"] .door-panel-group {
+      transform: perspective(220px) rotateY(-46deg) skewY(-5deg);
+    }
+
+    /* Animasi denyut saat CONNECTING */
+    .door-stage[data-state="CONNECTING"] .door-frame-svg {
+      animation: pulseSoft 1.4s ease-in-out infinite;
+    }
+
+    @keyframes pulseSoft {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.03); opacity: 0.78; }
+    }
+
+    /* Status Pill Badges */
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: var(--radius-full);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border: 1px solid transparent;
+      transition: all var(--transition-fast);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .status-TERKUNCI {
+      background: rgba(6, 182, 212, 0.14);
+      color: var(--accent-cyan-bright);
+      border-color: rgba(6, 182, 212, 0.35);
+    }
+
+    body.theme-light .status-TERKUNCI {
+      background: rgba(2, 132, 199, 0.12);
+      color: #0369a1;
+    }
+
+    .status-TERBUKA {
+      background: rgba(16, 185, 129, 0.16);
+      color: #34d399;
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+
+    body.theme-light .status-TERBUKA {
+      background: rgba(16, 185, 129, 0.14);
+      color: #047857;
+    }
+
+    .status-CONNECTING {
+      background: rgba(245, 158, 11, 0.16);
+      color: #fbbf24;
+      border-color: rgba(245, 158, 11, 0.4);
+    }
+
+    .status-CONNECTING .status-dot {
+      animation: blinkDot 0.9s infinite alternate;
+    }
+
+    body.theme-light .status-CONNECTING {
+      background: rgba(245, 158, 11, 0.16);
+      color: #b45309;
+    }
+
+    .status-OFFLINE,
+    .status-ERROR {
+      background: rgba(244, 63, 94, 0.16);
+      color: #fb7185;
+      border-color: rgba(244, 63, 94, 0.4);
+    }
+
+    body.theme-light .status-OFFLINE,
+    body.theme-light .status-ERROR {
+      background: rgba(244, 63, 94, 0.14);
+      color: #be123c;
+    }
+
+    @keyframes blinkDot {
+      from { opacity: 0.25; transform: scale(0.8); }
+      to { opacity: 1; transform: scale(1.15); }
+    }
+
+    .meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.55rem 0.75rem;
+      border-radius: var(--radius-sm);
+      background: rgba(148, 163, 184, 0.06);
+      font-size: 0.8rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .meta-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .meta-label {
+      color: var(--text-secondary);
+    }
+
+    .meta-value {
+      font-weight: 600;
+      color: var(--text-primary);
+      text-align: right;
+      word-break: break-word;
+    }
+
+    /* Form & Input Controls */
+    .form-group {
+      margin-bottom: 0.9rem;
+    }
+
+    .form-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 0.4rem;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .form-input {
+      width: 100%;
+      min-height: 46px;
+      padding: 0.65rem 2.75rem 0.65rem 0.9rem;
+      font-family: inherit;
+      font-size: 0.95rem;
+      color: var(--text-primary);
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      outline: none;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+
+    .form-input:focus {
+      border-color: var(--accent-cyan-bright);
+      box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.18);
+    }
+
+    .form-input:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .toggle-visibility-btn {
+      position: absolute;
+      right: 0.35rem;
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      border-radius: 8px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: color var(--transition-fast), background var(--transition-fast);
+    }
+
+    .toggle-visibility-btn:hover {
+      color: var(--text-primary);
+      background: rgba(148, 163, 184, 0.12);
+    }
+
+    .helper-text {
+      margin-top: 0.35rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .error-text {
+      margin-top: 0.35rem;
+      font-size: 0.76rem;
+      color: #fb7185;
+      min-height: 1.1em;
+    }
+
+    body.theme-light .error-text {
+      color: #be123c;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      min-height: 46px;
+      padding: 0.65rem 1.05rem;
+      font-family: inherit;
+      font-size: 0.88rem;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: transform var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    .btn:active:not(:disabled) {
+      transform: scale(0.98);
+    }
+
+    .btn:disabled {
+      opacity: 0.48;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .btn-sm {
+      min-height: 36px;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.78rem;
+    }
+
+    .btn-open {
+      background: linear-gradient(135deg, #06b6d4, #2563eb);
+      color: #ffffff;
+      box-shadow: var(--shadow-glow-cyan);
+    }
+
+    .btn-open:hover:not(:disabled) {
+      filter: brightness(1.08);
+      box-shadow: 0 0 28px rgba(34, 211, 238, 0.38);
+    }
+
+    .btn-lock {
+      background: rgba(148, 163, 184, 0.14);
+      color: var(--text-primary);
+      border-color: var(--border-subtle);
+    }
+
+    .btn-lock:hover:not(:disabled) {
+      background: rgba(148, 163, 184, 0.24);
+      border-color: rgba(148, 163, 184, 0.35);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      filter: brightness(1.08);
+    }
+
+    .btn-ghost {
+      background: rgba(148, 163, 184, 0.08);
+      color: var(--text-secondary);
+      border-color: var(--border-subtle);
+    }
+
+    .btn-ghost:hover:not(:disabled) {
+      color: var(--text-primary);
+      background: rgba(148, 163, 184, 0.16);
+    }
+
+    .btn-danger-ghost {
+      background: rgba(244, 63, 94, 0.1);
+      color: #fb7185;
+      border-color: rgba(244, 63, 94, 0.25);
+    }
+
+    .btn-danger-ghost:hover:not(:disabled) {
+      background: rgba(244, 63, 94, 0.2);
+    }
+
+    body.theme-light .btn-danger-ghost {
+      color: #be123c;
+    }
+
+    .action-btn-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.65rem;
+      margin-top: 0.5rem;
+    }
+
+    /* Spinner Loader */
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Activity History List */
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      max-height: 360px;
+      overflow-y: auto;
+      padding-right: 0.2rem;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.75rem 0.9rem;
+      border-radius: var(--radius-sm);
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      animation: fadeSlideIn 240ms ease-out;
+    }
+
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .history-left {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.7rem;
+      min-width: 0;
+    }
+
+    .history-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      margin-top: 0.05rem;
+    }
+
+    .hi-open {
+      background: rgba(16, 185, 129, 0.16);
+      color: #34d399;
+    }
+
+    .hi-lock {
+      background: rgba(6, 182, 212, 0.16);
+      color: #22d3ee;
+    }
+
+    .hi-pass {
+      background: rgba(59, 130, 246, 0.16);
+      color: #60a5fa;
+    }
+
+    .hi-fail {
+      background: rgba(244, 63, 94, 0.16);
+      color: #fb7185;
+    }
+
+    .hi-info {
+      background: rgba(148, 163, 184, 0.15);
+      color: var(--text-secondary);
+    }
+
+    .history-title {
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .history-desc {
+      font-size: 0.77rem;
+      color: var(--text-secondary);
+      margin-top: 0.1rem;
+      word-break: break-word;
+    }
+
+    .history-time {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      text-align: right;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 2rem 1rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      border: 1px dashed var(--border-subtle);
+      border-radius: var(--radius-md);
+    }
+
+    /* Toast Notifications */
+    .toast-container {
+      position: fixed;
+      bottom: 1.15rem;
+      right: 1.15rem;
+      left: 1.15rem;
+      max-width: 400px;
+      margin-left: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    .toast {
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.8rem 1rem;
+      border-radius: var(--radius-md);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 16px 36px rgba(2, 6, 23, 0.55);
+      font-size: 0.84rem;
+      color: var(--text-primary);
+      animation: toastIn 240ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(12px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .toast-success { border-left: 4px solid var(--accent-emerald); }
+    .toast-error   { border-left: 4px solid var(--accent-rose); }
+    .toast-warning { border-left: 4px solid var(--accent-amber); }
+    .toast-info    { border-left: 4px solid var(--accent-cyan-bright); }
+
+    /* Modal / Dialog Pengganti alert() & confirm() */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, 0.72);
+      backdrop-filter: blur(6px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      z-index: 9000;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-box {
+      width: 100%;
+      max-width: 480px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.35rem;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+      animation: toastIn 200ms ease-out;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.9rem;
+    }
+
+    .modal-title {
+      margin: 0;
+      font-size: 1.02rem;
+      font-weight: 700;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.6rem;
+      margin-top: 1.15rem;
+    }
+
+    .demo-sim-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .demo-sim-bar.hidden {
+      display: none;
+    }
+
+    /* ===================================================================
+       4. RESPONSIVE STYLING (Mobile-First -> Tablet -> Desktop)
+       =================================================================== */
+    @media (min-width: 480px) {
+      .action-btn-row {
+        grid-template-columns: 1.25fr 0.75fr;
+      }
+    }
+
+    @media (min-width: 640px) {
+      .app-shell {
+        padding: 1.5rem 1.5rem 3.5rem;
+      }
+      .toast-container {
+        left: auto;
+        bottom: 1.5rem;
+        right: 1.5rem;
+      }
+    }
+
+    @media (min-width: 768px) {
+      .main-top-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .secondary-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .main-top-row {
+        grid-template-columns: 1fr 1.15fr 1fr;
+      }
+      .secondary-row {
+        grid-template-columns: 0.95fr 1.35fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app-shell">
+    <!-- Top Header -->
+    <header class="top-header">
+      <div class="brand-group">
+        <div class="brand-logo" aria-hidden="true">
+          <!-- Ikon Smart Lock SVG -->
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            <circle cx="12" cy="16" r="1.2" fill="currentColor"></circle>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">
+            <span>IoT SmartDoor</span>
+            <span id="modeBadge" class="demo-badge">MODE DEMO</span>
+          </h1>
+          <p class="brand-subtitle">Sistem Kontrol &amp; Monitoring Pintu Pintar ESP32</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <span id="sessionIndicator" class="card-caption mono">Sesi: Aktif</span>
+        <button type="button" id="btnToggleSession" class="btn btn-sm btn-ghost">Keluar Sesi</button>
+        <button type="button" id="btnOpenConfigModal" class="btn btn-sm btn-ghost" title="Pengaturan Koneksi & Backend">
+          Konfigurasi
+        </button>
+        <button type="button" id="btnToggleTheme" class="btn btn-sm btn-ghost" title="Ganti Tema Tampilan">
+          Tema
+        </button>
+      </div>
+    </header>
+
+    <!-- Banner Peringatan Mode Demo -->
+    <div id="demoBanner" class="demo-banner" role="region" aria-label="Informasi Mode Demo">
+      <div class="demo-banner-text">
+        <strong>MODE DEMO AKTIF:</strong> Koneksi MQTT belum aktif. Seluruh aksi buka/kunci pintu, status perangkat, dan perubahan password disimulasikan secara lokal di browser—<strong>pintu fisik tidak benar-benar terbuka</strong>.
+      </div>
+      <button type="button" id="btnBannerConfig" class="btn btn-sm btn-ghost">Atur MQTT</button>
+    </div>
+
+    <!-- Dashboard Grid Utama -->
+    <main class="dashboard-grid">
+      <!-- Baris Atas: Door Status, Smart Door Control, Device Connection -->
+      <section class="main-top-row" aria-label="Kontrol dan Status Utama">
+        <!-- 1. DOOR STATUS CARD -->
+        <article class="smart-card" id="doorStatusCard">
+          <div class="card-header">
+            <div class="card-title-group">
+              <h2 class="card-title">Status Pintu</h2>
+            </div>
+            <span id="doorStatusBadge" class="status-pill status-CONNECTING">
+              <span class="status-dot"></span>
+              <span id="doorStatusText">CONNECTING</span>
+            </span>
+          </div>
+
+          <div id="doorStage" class="door-stage" data-state="CONNECTING">
+            <!-- Ilustrasi Pintu Beranimasi (SVG) -->
+            <svg class="door-frame-svg" viewBox="0 0 112 124" fill="none" aria-hidden="true">
+              <!-- Kusen Pintu -->
+              <rect x="18" y="10" width="76" height="104" rx="8" stroke="currentColor" stroke-opacity="0.28" stroke-width="3" fill="rgba(148, 163, 184, 0.05)" />
+              <!-- Ambang Bawah -->
+              <line x1="10" y1="116" x2="102" y2="116" stroke="currentColor" stroke-opacity="0.35" stroke-width="3" stroke-linecap="round" />
+              <!-- Daun Pintu Beranimasi -->
+              <g class="door-panel-group">
+                <rect x="24" y="16" width="64" height="92" rx="5" fill="url(#doorGrad)" stroke="#22d3ee" stroke-width="2" />
+                <rect x="33" y="26" width="46" height="32" rx="3" stroke="rgba(255,255,255,0.25)" stroke-width="1.5" />
+                <rect x="33" y="66" width="46" height="28" rx="3" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" />
+                <!-- Gagang / Kunci Servo -->
+                <circle cx="78" cy="64" r="4.5" fill="#fbbf24" />
+              </g>
+              <defs>
+                <linearGradient id="doorGrad" x1="24" y1="16" x2="88" y2="108" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#0e7490" stop-opacity="0.9" />
+                  <stop offset="100%" stop-color="#1e3a8a" stop-opacity="0.95" />
+                </linearGradient>
+              </defs>
+            </svg>
+
+            <div id="doorStateHeadline" style="font-weight: 700; font-size: 1rem;">Menghubungkan ke ESP32...</div>
+            <div id="doorStateSubtext" class="card-caption" style="margin-top: 0.2rem;">Aktuator Servo: Menunggu sinkronisasi</div>
+          </div>
+
+          <div class="meta-row">
+            <span class="meta-label">Pembaruan Terakhir</span>
+            <span id="lastStatusUpdate" class="meta-value mono">-</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Sinkronisasi Otomatis</span>
+            <span id="autoPollStatus" class="meta-value">Aktif (tiap 5 dtk)</span>
+          </div>
+        </article>
+
+        <!-- 2. SMART DOOR CONTROL CARD -->
+        <article class="smart-card" id="doorControlCard">
+          <div class="card-header">
+            <div class="card-title-group">
+              <h2 class="card-title">Kontrol Pintu (Servo)</h2>
+            </div>
+            <span id="controlBusyBadge" class="card-caption">Siap</span>
+          </div>
+
+          <form id="doorControlForm" novalidate>
+            <div class="form-group">
+              <label for="doorPasswordInput" class="form-label">
+                <span>Password Pintu</span>
+                <span id="attemptCounterLabel" class="mono" style="font-size: 0.72rem;">Percobaan: 0/5</span>
+              </label>
+              <div class="input-wrapper">
+                <input
+                  type="password"
+                  id="doorPasswordInput"
+                  class="form-input"
+                  placeholder="Masukkan password pintu ESP32"
+                  autocomplete="current-password"
+                  maxlength="64"
+                />
+                <button
+                  type="button"
+                  class="toggle-visibility-btn"
+                  data-target="doorPasswordInput"
+                  aria-label="Tampilkan atau sembunyikan password pintu"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
+              </div>
+              <div id="doorControlError" class="error-text" role="alert"></div>
+              <div id="demoPasswordHint" class="helper-text">
+                Mode Demo: gunakan sandi simulasi <span class="mono">246810</span> untuk membuka pintu, atau sandi lain untuk menguji penolakan.
+              </div>
+            </div>
+
+            <div class="action-btn-row">
+              <button type="submit" id="btnOpenDoor" class="btn btn-open">
+                <span id="btnOpenDoorText">Buka Pintu</span>
+              </button>
+              <button type="button" id="btnLockDoor" class="btn btn-lock">
+                <span id="btnLockDoorText">Kunci Pintu</span>
+              </button>
+            </div>
+          </form>
+
+          <!-- Tombol Simulasi Kondisi Khusus saat Mode Demo -->
+          <div id="demoSimBar" class="demo-sim-bar">
+            <span class="card-caption" style="width: 100%;">Simulasi Status Perangkat (Demo):</span>
+            <button type="button" id="btnSimOnline" class="btn btn-sm btn-ghost">Simulasi Online</button>
+            <button type="button" id="btnSimOffline" class="btn btn-sm btn-ghost">Simulasi Offline</button>
+            <button type="button" id="btnSimError" class="btn btn-sm btn-ghost">Simulasi Error</button>
+          </div>
+        </article>
+
+        <!-- 3. DEVICE CONNECTION CARD -->
+        <article class="smart-card" id="deviceConnectionCard">
+          <div class="card-header">
+            <div class="card-title-group">
+              <h2 class="card-title">Koneksi Perangkat ESP32</h2>
+            </div>
+            <span id="connStatusPill" class="status-pill status-CONNECTING">
+              <span class="status-dot"></span>
+              <span id="connStatusText">CONNECTING</span>
+            </span>
+          </div>
+
+          <div class="meta-row">
+            <span class="meta-label">Nama Perangkat</span>
+            <span id="infoDeviceName" class="meta-value">-</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Device ID</span>
+            <span id="infoDeviceId" class="meta-value mono">-</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Status Koneksi</span>
+            <span id="infoConnectionState" class="meta-value">Menghubungkan...</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Terakhir Aktif</span>
+            <span id="infoLastSeen" class="meta-value mono">-</span>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Komunikasi Server</span>
+            <span id="infoServerComm" class="meta-value">-</span>
+          </div>
+
+          <div style="margin-top: 0.95rem;">
+            <button type="button" id="btnReconnectDevice" class="btn btn-primary" style="width: 100%;">
+              <span id="btnReconnectText">Hubungkan Ulang Perangkat</span>
+            </button>
+          </div>
+        </article>
+      </section>
+
+      <!-- Baris Bawah: Change Door Password & Activity History -->
+      <section class="secondary-row" aria-label="Pengaturan Password dan Riwayat Aktivitas">
+        <!-- CHANGE DOOR PASSWORD CARD -->
+        <article class="smart-card" id="changePasswordCard">
+          <div class="card-header">
+            <div class="card-title-group">
+              <h2 class="card-title">Ubah Password Pintu</h2>
+            </div>
+            <span class="card-caption">Tersimpan Permanen di ESP32</span>
+          </div>
+
+          <form id="changePasswordForm" novalidate>
+            <div class="form-group">
+              <label for="oldPasswordInput" class="form-label">Password Lama</label>
+              <div class="input-wrapper">
+                <input
+                  type="password"
+                  id="oldPasswordInput"
+                  class="form-input"
+                  placeholder="Masukkan password saat ini"
+                  autocomplete="current-password"
+                  maxlength="64"
+                />
+                <button type="button" class="toggle-visibility-btn" data-target="oldPasswordInput" aria-label="Tampilkan atau sembunyikan password lama">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="newPasswordInput" class="form-label">Password Baru</label>
+              <div class="input-wrapper">
+                <input
+                  type="password"
+                  id="newPasswordInput"
+                  class="form-input"
+                  placeholder="Minimal 6 karakter"
+                  autocomplete="new-password"
+                  maxlength="64"
+                />
+                <button type="button" class="toggle-visibility-btn" data-target="newPasswordInput" aria-label="Tampilkan atau sembunyikan password baru">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="confirmPasswordInput" class="form-label">Konfirmasi Password Baru</label>
+              <div class="input-wrapper">
+                <input
+                  type="password"
+                  id="confirmPasswordInput"
+                  class="form-input"
+                  placeholder="Ulangi password baru"
+                  autocomplete="new-password"
+                  maxlength="64"
+                />
+                <button type="button" class="toggle-visibility-btn" data-target="confirmPasswordInput" aria-label="Tampilkan atau sembunyikan konfirmasi password">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
+              </div>
+              <div id="changePasswordError" class="error-text" role="alert"></div>
+            </div>
+
+            <button type="submit" id="btnChangePassword" class="btn btn-primary" style="width: 100%;">
+              <span id="btnChangePasswordText">Simpan Password Baru ke ESP32</span>
+            </button>
+          </form>
+        </article>
+
+        <!-- ACTIVITY HISTORY CARD -->
+        <article class="smart-card" id="activityHistoryCard">
+          <div class="card-header">
+            <div class="card-title-group">
+              <h2 class="card-title">Riwayat Aktivitas</h2>
+              <span id="historyCountBadge" class="card-caption mono">(0)</span>
+            </div>
+            <button type="button" id="btnClearHistory" class="btn btn-sm btn-danger-ghost">
+              Hapus Riwayat
+            </button>
+          </div>
+
+          <div id="activityHistoryList" class="history-list" aria-live="polite">
+            <!-- Diisi dinamis oleh ActivityHistoryManager -->
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <!-- Wadah Toast Notification -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <!-- Modal Konfirmasi & Konfigurasi (Pengganti alert() / confirm()) -->
+  <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modalTitle" class="modal-title">Konfirmasi</h3>
+        <button type="button" id="btnCloseModal" class="btn btn-sm btn-ghost" aria-label="Tutup modal">✕</button>
+      </div>
+      <div id="modalBody"></div>
+      <div id="modalFooter" class="modal-footer"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/mqtt@5.10.4/dist/mqtt.min.js"></script>
+  <script>
+    /* ===================================================================
+       5. JAVASCRIPT CONFIGURATION
+       Sesuaikan bagian ini untuk menghubungkan aplikasi dengan backend
+       internet / cloud yang berkomunikasi dengan mikrokontroler ESP32.
+       =================================================================== */
+    const APP_CONFIG = {
+      appName: 'IoT SmartDoor',
+      version: '1.1.0',
+      defaultDevice: { name: 'Pintu Utama SmartDoor', deviceId: 'ESP32-DOOR-01' },
+      mqtt: {
+        enabled: true,
+        url: 'wss://broker.hivemq.com:8884/mqtt',
+        topicPrefix: 'smartdoor/demo/door01/a7f93c',
+        commandTimeoutMs: 10000,
+        deviceTimeoutMs: 15000,
+        pollIntervalMs: 5000
+      },
+      security: {
+        minPasswordLength: 6,
+        maxPasswordLength: 64,
+        maxFailedAttempts: 5,
+        lockoutDurationMs: 30000
+      },
+      storageKeys: {
+        preferences: 'smartdoor_preferences_v1',
+        deviceConfig: 'smartdoor_device_config_v1',
+        history: 'smartdoor_activity_history_v1',
+        session: 'smartdoor_session_v1'
+      }
+    };
+
+    // Konstanta status pintu & koneksi yang diizinkan
+    const DOOR_STATES = Object.freeze({
+      TERKUNCI: 'TERKUNCI',
+      TERBUKA: 'TERBUKA',
+      CONNECTING: 'CONNECTING',
+      OFFLINE: 'OFFLINE',
+      ERROR: 'ERROR'
+    });
+
+    const ACTIVITY_TYPES = Object.freeze({
+      DOOR_OPENED: 'DOOR_OPENED',
+      DOOR_LOCKED: 'DOOR_LOCKED',
+      PASSWORD_CHANGED: 'PASSWORD_CHANGED',
+      AUTH_FAILED: 'AUTH_FAILED',
+      SYSTEM_INFO: 'SYSTEM_INFO'
+    });
+
+    /* ===================================================================
+       6. LOCAL STORAGE MANAGER
+       Menyimpan preferensi, konfigurasi non-rahasia, riwayat aktivitas,
+       dan informasi sesi non-sensitif dengan validasi integritas data.
+       TIDAK pernah menyimpan password pintu dalam bentuk plaintext.
+       =================================================================== */
+    const StorageManager = (() => {
+      function safeReadJson(key, fallback) {
+        try {
+          const raw = window.localStorage.getItem(key);
+          if (!raw) return fallback;
+          const parsed = JSON.parse(raw);
+          return parsed ?? fallback;
+        } catch (err) {
+          console.warn(`[StorageManager] Gagal membaca key "${key}":`, err);
+          return fallback;
+        }
+      }
+
+      function safeWriteJson(key, value) {
+        try {
+          window.localStorage.setItem(key, JSON.stringify(value));
+          return true;
+        } catch (err) {
+          console.warn(`[StorageManager] Gagal menulis key "${key}":`, err);
+          return false;
+        }
+      }
+
+      // Validasi preferensi tampilan
+      function getPreferences() {
+        const defaults = { theme: 'dark', autoPoll: true };
+        const data = safeReadJson(APP_CONFIG.storageKeys.preferences, defaults);
+        if (typeof data !== 'object' || Array.isArray(data)) return defaults;
+
+        return {
+          theme: data.theme === 'light' ? 'light' : 'dark',
+          autoPoll: typeof data.autoPoll === 'boolean' ? data.autoPoll : true
+        };
+      }
+
+      function savePreferences(prefs) {
+        const clean = {
+          theme: prefs.theme === 'light' ? 'light' : 'dark',
+          autoPoll: Boolean(prefs.autoPoll)
+        };
+        return safeWriteJson(APP_CONFIG.storageKeys.preferences, clean);
+      }
+
+      // Konfigurasi MQTT non-rahasia. Password pintu tidak disimpan di browser.
+      function getDeviceConfig() {
+        const defaults = {
+          name: APP_CONFIG.defaultDevice.name,
+          deviceId: APP_CONFIG.defaultDevice.deviceId,
+          mqttUrl: APP_CONFIG.mqtt.url,
+          topicPrefix: APP_CONFIG.mqtt.topicPrefix,
+          mqttEnabled: APP_CONFIG.mqtt.enabled
+        };
+        const data = safeReadJson(APP_CONFIG.storageKeys.deviceConfig, defaults);
+        if (!data || typeof data !== 'object' || Array.isArray(data)) return defaults;
+        const name = typeof data.name === 'string' && data.name.trim() ? data.name.trim().slice(0, 50) : defaults.name;
+        const deviceId = typeof data.deviceId === 'string' && /^[a-zA-Z0-9_-]{3,40}$/.test(data.deviceId.trim()) ? data.deviceId.trim() : defaults.deviceId;
+        const mqttUrl = typeof data.mqttUrl === 'string' && data.mqttUrl.trim() ? data.mqttUrl.trim().slice(0, 250) : defaults.mqttUrl;
+        const topicPrefix = typeof data.topicPrefix === 'string' && /^[a-zA-Z0-9/_-]{5,120}$/.test(data.topicPrefix.trim())
+          ? data.topicPrefix.trim().replace(/\/+$/, '') : defaults.topicPrefix;
+        return { name, deviceId, mqttUrl, topicPrefix, mqttEnabled: data.mqttEnabled === undefined ? true : Boolean(data.mqttEnabled) };
+      }
+
+      function saveDeviceConfig(cfg) {
+        const mqttUrl = typeof cfg.mqttUrl === 'string' ? cfg.mqttUrl.trim().slice(0, 250) : '';
+        const topicPrefix = typeof cfg.topicPrefix === 'string' ? cfg.topicPrefix.trim().replace(/\/+$/, '') : '';
+        const clean = {
+          name: (typeof cfg.name === 'string' && cfg.name.trim()) ? cfg.name.trim().slice(0, 50) : APP_CONFIG.defaultDevice.name,
+          deviceId: (typeof cfg.deviceId === 'string' && /^[a-zA-Z0-9_-]{3,40}$/.test(cfg.deviceId.trim())) ? cfg.deviceId.trim() : APP_CONFIG.defaultDevice.deviceId,
+          mqttUrl,
+          topicPrefix: /^[a-zA-Z0-9/_-]{5,120}$/.test(topicPrefix) ? topicPrefix : APP_CONFIG.mqtt.topicPrefix,
+          mqttEnabled: Boolean(cfg.mqttEnabled && (mqttUrl.startsWith('wss://') || mqttUrl.startsWith('ws://')))
+        };
+        return safeWriteJson(APP_CONFIG.storageKeys.deviceConfig, clean);
+      }
+
+      // Validasi riwayat aktivitas
+      function getHistory() {
+        const rawList = safeReadJson(APP_CONFIG.storageKeys.history, []);
+        if (!Array.isArray(rawList)) return [];
+
+        const validTypes = new Set(Object.values(ACTIVITY_TYPES));
+        return rawList
+          .filter((item) =>
+            item &&
+            typeof item === 'object' &&
+            typeof item.id === 'string' &&
+            validTypes.has(item.type) &&
+            typeof item.title === 'string' &&
+            typeof item.timestamp === 'string'
+          )
+          .slice(0, 150)
+          .map((item) => ({
+            id: item.id.slice(0, 40),
+            type: item.type,
+            title: item.title.slice(0, 80),
+            description: typeof item.description === 'string' ? item.description.slice(0, 180) : '',
+            timestamp: item.timestamp
+          }));
+      }
+
+      function saveHistory(list) {
+        const capped = Array.isArray(list) ? list.slice(0, 150) : [];
+        return safeWriteJson(APP_CONFIG.storageKeys.history, capped);
+      }
+
+      function clearHistory() {
+        return safeWriteJson(APP_CONFIG.storageKeys.history, []);
+      }
+
+      // Informasi sesi aplikasi non-sensitif (bukan kredensial/password pintu)
+      function getSessionInfo() {
+        const defaults = { authenticated: true, roleLabel: 'Pengguna Terotorisasi' };
+        const data = safeReadJson(APP_CONFIG.storageKeys.session, defaults);
+        if (typeof data !== 'object' || Array.isArray(data)) return defaults;
+        return {
+          authenticated: Boolean(data.authenticated),
+          roleLabel: typeof data.roleLabel === 'string' && data.roleLabel.trim()
+            ? data.roleLabel.trim().slice(0, 40)
+            : defaults.roleLabel
+        };
+      }
+
+      function saveSessionInfo(session) {
+        return safeWriteJson(APP_CONFIG.storageKeys.session, {
+          authenticated: Boolean(session.authenticated),
+          roleLabel: 'Pengguna Terotorisasi'
+        });
+      }
+
+      return {
+        getPreferences,
+        savePreferences,
+        getDeviceConfig,
+        saveDeviceConfig,
+        getHistory,
+        saveHistory,
+        clearHistory,
+        getSessionInfo,
+        saveSessionInfo
+      };
+    })();
+
+    /* ===================================================================
+       7. DEVICE COMMUNICATION MANAGER
+       Mengelola koneksi ke ESP32 melalui backend internet (HTTPS) serta
+       menyediakan simulasi MODE DEMO apabila backend belum dikonfigurasi.
+       =================================================================== */
+    const DeviceCommunicationManager = (() => {
+      const demoState = {
+        doorState: DOOR_STATES.TERKUNCI, online: true, errorMode: false,
+        lastSeenIso: new Date().toISOString(), simulatedPassword: '246810'
+      };
+      let mqttClient = null;
+      let mqttConnectPromise = null;
+      let brokerConnected = false;
+      let latestStatus = null;
+      let availabilityOnline = false;
+      const pendingRequests = new Map();
+
+      function getConfig() { return StorageManager.getDeviceConfig(); }
+      function isDemoMode() {
+        const c = getConfig();
+        return !c.mqttEnabled || !(c.mqttUrl.startsWith('wss://') || c.mqttUrl.startsWith('ws://'));
+      }
+      function topics() {
+        const p = getConfig().topicPrefix;
+        return { command: `${p}/command`, status: `${p}/status`, response: `${p}/response`, availability: `${p}/availability` };
+      }
+      function parse(payload) { try { return JSON.parse(payload.toString()); } catch (_) { return null; } }
+
+      function handleMessage(topic, payload) {
+        const t = topics();
+        const raw = payload.toString();
+        if (topic === t.status) {
+          const d = parse(payload);
+          if (!d) return;
+          const state = String(d.doorState || '').toUpperCase();
+          latestStatus = {
+            doorState: ['TERKUNCI', 'TERBUKA', 'ERROR'].includes(state) ? state : 'ERROR',
+            online: d.online !== false, lastSeen: new Date().toISOString(), receivedAt: Date.now()
+          };
+          availabilityOnline = d.online !== false;
+        } else if (topic === t.availability) {
+          availabilityOnline = raw.trim().toLowerCase() === 'online';
+          if (!availabilityOnline && latestStatus) latestStatus.online = false;
+        } else if (topic === t.response) {
+          const d = parse(payload);
+          if (!d || !d.requestId) return;
+          const pending = pendingRequests.get(d.requestId);
+          if (!pending) return;
+          clearTimeout(pending.timer);
+          pendingRequests.delete(d.requestId);
+          pending.resolve(d);
+        }
+      }
+
+      function disconnectMqtt() {
+        if (mqttClient) { try { mqttClient.end(true); } catch (_) {} }
+        mqttClient = null; mqttConnectPromise = null; brokerConnected = false;
+        latestStatus = null; availabilityOnline = false;
+        pendingRequests.forEach((p) => { clearTimeout(p.timer); p.reject(new Error('Koneksi MQTT dihentikan.')); });
+        pendingRequests.clear();
+      }
+
+      function ensureMqttConnected() {
+        if (isDemoMode()) return Promise.reject(new Error('MQTT belum diaktifkan.'));
+        if (mqttClient && mqttClient.connected) return Promise.resolve(true);
+        if (mqttConnectPromise) return mqttConnectPromise;
+        if (mqttClient && !mqttClient.connected) {
+          try { mqttClient.end(true); } catch (_) {}
+          mqttClient = null;
+        }
+        if (typeof mqtt === 'undefined') return Promise.reject(new Error('MQTT.js gagal dimuat. Periksa internet lalu refresh halaman.'));
+        const c = getConfig();
+        mqttConnectPromise = new Promise((resolve, reject) => {
+          let settled = false;
+          const clientId = `smartdoor-web-${Math.random().toString(16).slice(2, 12)}`;
+          try {
+            mqttClient = mqtt.connect(c.mqttUrl, {
+              clientId, clean: true, connectTimeout: 8000, keepalive: 30,
+              reconnectPeriod: 3000, resubscribe: true, protocolVersion: 4
+            });
+          } catch (err) { mqttConnectPromise = null; reject(err); return; }
+
+          const timeout = setTimeout(() => {
+            if (!settled) { settled = true; reject(new Error('Timeout menghubungkan broker MQTT. Periksa URL WSS.')); }
+          }, 10000);
+
+          mqttClient.on('connect', () => {
+            brokerConnected = true;
+            const t = topics();
+            mqttClient.subscribe([t.status, t.response, t.availability], { qos: 1 }, (err) => {
+              if (err && !settled) {
+                settled = true; clearTimeout(timeout); mqttConnectPromise = null;
+                reject(new Error('Gagal subscribe topic MQTT: ' + err.message));
+              } else if (!settled) {
+                settled = true; clearTimeout(timeout); resolve(true);
+              }
+            });
+          });
+          mqttClient.on('message', handleMessage);
+          mqttClient.on('reconnect', () => { brokerConnected = false; });
+          mqttClient.on('offline', () => { brokerConnected = false; mqttConnectPromise = null; });
+          mqttClient.on('close', () => { brokerConnected = false; mqttConnectPromise = null; });
+          mqttClient.on('error', (err) => {
+            console.error('[MQTT]', err); brokerConnected = false;
+            if (!settled) { settled = true; clearTimeout(timeout); mqttConnectPromise = null; reject(new Error('MQTT: ' + err.message)); }
+          });
+        }).catch((err) => { mqttConnectPromise = null; throw err; });
+        return mqttConnectPromise;
+      }
+
+      function waitForStatus(ms = 5000) {
+        if (latestStatus && Date.now() - latestStatus.receivedAt < APP_CONFIG.mqtt.deviceTimeoutMs) return Promise.resolve(latestStatus);
+        return new Promise((resolve) => {
+          const start = Date.now();
+          const tick = () => {
+            if (latestStatus && Date.now() - latestStatus.receivedAt < APP_CONFIG.mqtt.deviceTimeoutMs) resolve(latestStatus);
+            else if (Date.now() - start >= ms) resolve(null);
+            else setTimeout(tick, 150);
+          };
+          tick();
+        });
+      }
+
+      async function sendCommand(action, payload = {}) {
+        await ensureMqttConnected();
+        const t = topics();
+        const requestId = `req-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+        const message = { requestId, action, ...payload };
+        return new Promise((resolve, reject) => {
+          const timer = setTimeout(() => {
+            pendingRequests.delete(requestId);
+            reject(new Error('ESP32 tidak mengirim konfirmasi. Pastikan Wokwi berjalan dan topic MQTT cocok.'));
+          }, APP_CONFIG.mqtt.commandTimeoutMs);
+          pendingRequests.set(requestId, { resolve, reject, timer });
+          mqttClient.publish(t.command, JSON.stringify(message), { qos: 1, retain: false }, (err) => {
+            if (err) {
+              clearTimeout(timer); pendingRequests.delete(requestId);
+              reject(new Error('Gagal mengirim MQTT: ' + err.message));
+            }
+          });
+        });
+      }
+
+      function setDemoSimulationMode(mode) {
+        if (mode === 'ONLINE') { demoState.online = true; demoState.errorMode = false; demoState.lastSeenIso = new Date().toISOString(); }
+        else if (mode === 'OFFLINE') { demoState.online = false; demoState.errorMode = false; }
+        else if (mode === 'ERROR') demoState.errorMode = true;
+      }
+
+      async function connectToDevice() {
+        const c = getConfig();
+        if (isDemoMode()) {
+          await new Promise(r => setTimeout(r, 400));
+          const ok = demoState.online && !demoState.errorMode;
+          return {
+            ok, connected: ok,
+            doorState: demoState.errorMode ? DOOR_STATES.ERROR : (ok ? demoState.doorState : DOOR_STATES.OFFLINE),
+            serverComm: 'Mode Demo', lastSeen: demoState.lastSeenIso,
+            deviceName: c.name, deviceId: c.deviceId, message: ok ? '' : 'Mode Demo: perangkat tidak tersedia.'
+          };
+        }
+        await ensureMqttConnected();
+        const status = await waitForStatus(5000);
+        if (!status || !status.online) return {
+          ok: false, connected: false, doorState: DOOR_STATES.OFFLINE,
+          serverComm: brokerConnected ? 'Broker MQTT aktif, ESP32 belum mengirim status' : 'Broker MQTT terputus',
+          lastSeen: status?.lastSeen || null,
+          message: 'Broker terhubung, tetapi status ESP32 belum diterima. Jalankan simulasi Wokwi.'
+        };
+        return {
+          ok: true, connected: true, doorState: status.doorState,
+          serverComm: 'MQTT Terhubung', lastSeen: status.lastSeen,
+          deviceName: c.name, deviceId: c.deviceId
+        };
+      }
+
+      async function checkDeviceConnection() {
+        if (isDemoMode()) return {
+          connected: demoState.online && !demoState.errorMode,
+          doorState: demoState.errorMode ? DOOR_STATES.ERROR : (demoState.online ? demoState.doorState : DOOR_STATES.OFFLINE),
+          serverComm: 'Mode Demo', lastSeen: demoState.lastSeenIso
+        };
+        const fresh = latestStatus && Date.now() - latestStatus.receivedAt < APP_CONFIG.mqtt.deviceTimeoutMs;
+        const online = Boolean(brokerConnected && fresh && latestStatus.online && availabilityOnline !== false);
+        return {
+          connected: online,
+          doorState: online ? latestStatus.doorState : DOOR_STATES.OFFLINE,
+          serverComm: brokerConnected ? (online ? 'MQTT Sinkron' : 'ESP32 Offline') : 'Broker MQTT Offline',
+          lastSeen: latestStatus?.lastSeen || null
+        };
+      }
+
+      async function getDoorStatus() {
+        if (isDemoMode()) {
+          if (demoState.errorMode) return { doorState: DOOR_STATES.ERROR, connected: false, serverComm: 'Error Demo', lastSeen: demoState.lastSeenIso };
+          if (!demoState.online) return { doorState: DOOR_STATES.OFFLINE, connected: false, serverComm: 'Offline Demo', lastSeen: demoState.lastSeenIso };
+          return { doorState: demoState.doorState, connected: true, serverComm: 'Sinkron Demo', lastSeen: demoState.lastSeenIso };
+        }
+        return checkDeviceConnection();
+      }
+
+      async function openDoor(password) {
+        if (isDemoMode()) {
+          await new Promise(r => setTimeout(r, 350));
+          if (!demoState.online || demoState.errorMode) throw new Error('Perangkat Demo sedang offline atau error.');
+          if (password !== demoState.simulatedPassword) return { success: false, confirmed: false, reason: 'WRONG_PASSWORD', message: 'Password pintu salah (Mode Demo).' };
+          demoState.doorState = DOOR_STATES.TERBUKA; demoState.lastSeenIso = new Date().toISOString();
+          return { success: true, confirmed: true, doorState: DOOR_STATES.TERBUKA, lastSeen: demoState.lastSeenIso, message: 'Pintu terbuka (Mode Demo).' };
+        }
+        const d = await sendCommand('OPEN', { password });
+        const ok = Boolean(d.confirmed && d.success);
+        return { success: ok, confirmed: ok, reason: d.reason || (ok ? 'OK' : 'REJECTED'), doorState: d.doorState, lastSeen: new Date().toISOString(), message: d.message || (ok ? 'Pintu dibuka ESP32.' : 'Password salah atau perintah ditolak.') };
+      }
+
+      async function lockDoor() {
+        if (isDemoMode()) {
+          await new Promise(r => setTimeout(r, 300));
+          if (!demoState.online || demoState.errorMode) throw new Error('Perangkat Demo sedang offline atau error.');
+          demoState.doorState = DOOR_STATES.TERKUNCI; demoState.lastSeenIso = new Date().toISOString();
+          return { success: true, confirmed: true, doorState: DOOR_STATES.TERKUNCI, lastSeen: demoState.lastSeenIso, message: 'Pintu terkunci (Mode Demo).' };
+        }
+        const d = await sendCommand('LOCK');
+        const ok = Boolean(d.confirmed && d.success);
+        return { success: ok, confirmed: ok, doorState: d.doorState, lastSeen: new Date().toISOString(), message: d.message || (ok ? 'Pintu terkunci ESP32.' : 'Gagal mengunci pintu.') };
+      }
+
+      async function changeDoorPassword(oldPassword, newPassword) {
+        if (isDemoMode()) {
+          await new Promise(r => setTimeout(r, 350));
+          if (!demoState.online || demoState.errorMode) throw new Error('Perangkat Demo sedang offline atau error.');
+          if (oldPassword !== demoState.simulatedPassword) return { success: false, confirmed: false, reason: 'WRONG_OLD_PASSWORD', message: 'Password lama tidak sesuai (Mode Demo).' };
+          demoState.simulatedPassword = newPassword; demoState.lastSeenIso = new Date().toISOString();
+          return { success: true, confirmed: true, persisted: true, lastSeen: demoState.lastSeenIso, message: 'Password simulasi berhasil diubah.' };
+        }
+        const d = await sendCommand('CHANGE_PASSWORD', { oldPassword, newPassword });
+        const ok = Boolean(d.confirmed && d.success);
+        return { success: ok, confirmed: ok, persisted: Boolean(d.persisted), lastSeen: new Date().toISOString(), message: d.message || (ok ? 'Password tersimpan pada ESP32.' : 'Gagal mengubah password.') };
+      }
+
+      async function getActivityHistory() { return StorageManager.getHistory(); }
+
+      return {
+        isDemoMode, setDemoSimulationMode, connectToDevice, checkDeviceConnection,
+        getDoorStatus, openDoor, lockDoor, changeDoorPassword, getActivityHistory, disconnectMqtt
+      };
+    })();
+
+    /* ===================================================================
+       10. ACTIVITY HISTORY MANAGER
+       Mencatat riwayat pintu dibuka, dikunci, ubah password, dan gagal
+       autentikasi dengan timestamp, tersimpan di Local Storage.
+       =================================================================== */
+    const ActivityHistoryManager = (() => {
+      let items = [];
+
+      function init() {
+        items = StorageManager.getHistory();
+        render();
+      }
+
+      function formatTimestamp(isoStr) {
+        try {
+          const date = isoStr ? new Date(isoStr) : new Date();
+          if (Number.isNaN(date.getTime())) return '-';
+          return date.toLocaleString('id-ID', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+        } catch (_) {
+          return '-';
+        }
+      }
+
+      function addEntry(type, title, description = '') {
+        const entry = {
+          id: `act_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          type,
+          title,
+          description,
+          timestamp: new Date().toISOString()
+        };
+
+        items = [entry, ...items].slice(0, 150);
+        StorageManager.saveHistory(items);
+        render();
+        return entry;
+      }
+
+      function clearAll() {
+        items = [];
+        StorageManager.clearHistory();
+        render();
+      }
+
+      function getIconMarkup(type) {
+        switch (type) {
+          case ACTIVITY_TYPES.DOOR_OPENED:
+            return `<div class="history-icon hi-open" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"></path>
+                <path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path>
+                <path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"></path>
+                <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path>
+              </svg>
+            </div>`;
+          case ACTIVITY_TYPES.DOOR_LOCKED:
+            return `<div class="history-icon hi-lock" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <rect x="3" y="11" width="18" height="11" rx="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </div>`;
+          case ACTIVITY_TYPES.PASSWORD_CHANGED:
+            return `<div class="history-icon hi-pass" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+              </svg>
+            </div>`;
+          case ACTIVITY_TYPES.AUTH_FAILED:
+            return `<div class="history-icon hi-fail" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+              </svg>
+            </div>`;
+          default:
+            return `<div class="history-icon hi-info" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+            </div>`;
+        }
+      }
+
+      function render() {
+        const listEl = document.getElementById('activityHistoryList');
+        const countEl = document.getElementById('historyCountBadge');
+        if (!listEl || !countEl) return;
+
+        countEl.textContent = `(${items.length})`;
+
+        if (items.length === 0) {
+          listEl.innerHTML = `<div class="empty-state">Belum ada riwayat aktivitas tercatat pada browser ini.</div>`;
+          return;
+        }
+
+        listEl.innerHTML = items.map((item) => {
+          const safeTitle = escapeHtml(item.title);
+          const safeDesc = escapeHtml(item.description);
+          const timeStr = escapeHtml(formatTimestamp(item.timestamp));
+          return `
+            <div class="history-item">
+              <div class="history-left">
+                ${getIconMarkup(item.type)}
+                <div>
+                  <div class="history-title">${safeTitle}</div>
+                  ${safeDesc ? `<div class="history-desc">${safeDesc}</div>` : ''}
+                </div>
+              </div>
+              <div class="history-time mono">${timeStr}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      return {
+        init,
+        addEntry,
+        clearAll,
+        formatTimestamp,
+        render
+      };
+    })();
+
+    /* ===================================================================
+       11. UI INTERACTION DAN NOTIFICATION MANAGER
+       Mengatur toast notification, modal pengganti alert/confirm, status
+       visual pintu & koneksi, serta visibilitas input password.
+       =================================================================== */
+    const UIManager = (() => {
+      function showToast(message, type = 'info', durationMs = 3800) {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        const validType = ['success', 'error', 'warning', 'info'].includes(type) ? type : 'info';
+        toast.className = `toast toast-${validType}`;
+        toast.setAttribute('role', 'status');
+
+        const textSpan = document.createElement('span');
+        textSpan.textContent = message;
+
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'btn btn-sm btn-ghost';
+        closeBtn.style.minHeight = '28px';
+        closeBtn.style.padding = '0.15rem 0.45rem';
+        closeBtn.textContent = '✕';
+        closeBtn.addEventListener('click', () => removeToast(toast));
+
+        toast.appendChild(textSpan);
+        toast.appendChild(closeBtn);
+        container.appendChild(toast);
+
+        window.setTimeout(() => removeToast(toast), durationMs);
+      }
+
+      function removeToast(toastEl) {
+        if (!toastEl || !toastEl.parentElement) return;
+        toastEl.style.opacity = '0';
+        toastEl.style.transform = 'translateY(8px)';
+        toastEl.style.transition = 'all 180ms ease-in';
+        window.setTimeout(() => toastEl.remove(), 190);
+      }
+
+      function openModal({ title, bodyHtml, footerButtons = [] }) {
+        const backdrop = document.getElementById('modalBackdrop');
+        const titleEl = document.getElementById('modalTitle');
+        const bodyEl = document.getElementById('modalBody');
+        const footerEl = document.getElementById('modalFooter');
+        if (!backdrop || !titleEl || !bodyEl || !footerEl) return;
+
+        titleEl.textContent = title || 'Informasi';
+        bodyEl.innerHTML = bodyHtml || '';
+        footerEl.innerHTML = '';
+
+        footerButtons.forEach((btnCfg) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `btn btn-sm ${btnCfg.className || 'btn-ghost'}`;
+          btn.textContent = btnCfg.label;
+          btn.addEventListener('click', () => {
+            if (typeof btnCfg.onClick === 'function') {
+              btnCfg.onClick();
+            }
+          });
+          footerEl.appendChild(btn);
+        });
+
+        backdrop.classList.add('open');
+      }
+
+      function closeModal() {
+        const backdrop = document.getElementById('modalBackdrop');
+        if (backdrop) backdrop.classList.remove('open');
+      }
+
+      function applyTheme(theme) {
+        const isLight = theme === 'light';
+        document.body.classList.toggle('theme-light', isLight);
+        const btn = document.getElementById('btnToggleTheme');
+        if (btn) {
+          btn.textContent = isLight ? 'Mode Gelap' : 'Mode Terang';
+        }
+      }
+
+      function syncDemoBadge() {
+        const isDemo = DeviceCommunicationManager.isDemoMode();
+        const badge = document.getElementById('modeBadge');
+        const banner = document.getElementById('demoBanner');
+        const simBar = document.getElementById('demoSimBar');
+        const hint = document.getElementById('demoPasswordHint');
+
+        if (badge) {
+          badge.className = isDemo ? 'demo-badge' : 'live-badge';
+          badge.textContent = isDemo ? 'MODE DEMO' : 'LIVE MQTT';
+        }
+        if (banner) {
+          banner.classList.toggle('hidden', !isDemo);
+        }
+        if (simBar) {
+          simBar.classList.toggle('hidden', !isDemo);
+        }
+        if (hint) {
+          hint.style.display = isDemo ? 'block' : 'none';
+        }
+      }
+
+      function renderDeviceInfo() {
+        const cfg = StorageManager.getDeviceConfig();
+        const nameEl = document.getElementById('infoDeviceName');
+        const idEl = document.getElementById('infoDeviceId');
+        if (nameEl) nameEl.textContent = cfg.name;
+        if (idEl) idEl.textContent = cfg.deviceId;
+      }
+
+      function renderDoorStatus(state, lastSeenIso = null) {
+        const validState = Object.values(DOOR_STATES).includes(state) ? state : DOOR_STATES.ERROR;
+        const badge = document.getElementById('doorStatusBadge');
+        const textEl = document.getElementById('doorStatusText');
+        const stage = document.getElementById('doorStage');
+        const headline = document.getElementById('doorStateHeadline');
+        const subtext = document.getElementById('doorStateSubtext');
+        const lastUpdateEl = document.getElementById('lastStatusUpdate');
+
+        if (badge) badge.className = `status-pill status-${validState}`;
+        if (textEl) textEl.textContent = validState;
+        if (stage) stage.setAttribute('data-state', validState);
+
+        const descriptions = {
+          [DOOR_STATES.TERKUNCI]: {
+            title: 'Pintu Terkunci',
+            sub: 'Kait servo motor berada pada posisi mengunci.'
+          },
+          [DOOR_STATES.TERBUKA]: {
+            title: 'Pintu Terbuka',
+            sub: 'Kait servo motor terbuka — akses pintu diizinkan.'
+          },
+          [DOOR_STATES.CONNECTING]: {
+            title: 'Menghubungkan ke ESP32...',
+            sub: 'Sedang menjalin komunikasi dengan perangkat.'
+          },
+          [DOOR_STATES.OFFLINE]: {
+            title: 'ESP32 Sedang Offline',
+            sub: 'Perangkat tidak merespons melalui jaringan internet.'
+          },
+          [DOOR_STATES.ERROR]: {
+            title: 'Terjadi Kesalahan Perangkat',
+            sub: 'Periksa koneksi daya/jaringan atau konfigurasi backend.'
+          }
+        };
+
+        const info = descriptions[validState];
+        if (headline) headline.textContent = info.title;
+        if (subtext) subtext.textContent = info.sub;
+
+        if (lastUpdateEl) {
+          lastUpdateEl.textContent = lastSeenIso
+            ? ActivityHistoryManager.formatTimestamp(lastSeenIso)
+            : ActivityHistoryManager.formatTimestamp(new Date().toISOString());
+        }
+      }
+
+      function renderConnectionStatus({ connected, doorState, serverComm, lastSeen }) {
+        const pill = document.getElementById('connStatusPill');
+        const text = document.getElementById('connStatusText');
+        const connStateEl = document.getElementById('infoConnectionState');
+        const lastSeenEl = document.getElementById('infoLastSeen');
+        const serverCommEl = document.getElementById('infoServerComm');
+
+        let badgeState = DOOR_STATES.OFFLINE;
+        let label = 'OFFLINE';
+
+        if (doorState === DOOR_STATES.CONNECTING) {
+          badgeState = DOOR_STATES.CONNECTING;
+          label = 'CONNECTING';
+        } else if (doorState === DOOR_STATES.ERROR) {
+          badgeState = DOOR_STATES.ERROR;
+          label = 'ERROR';
+        } else if (connected) {
+          badgeState = DOOR_STATES.TERBUKA;
+          label = 'ONLINE';
+        }
+
+        if (pill) pill.className = `status-pill status-${badgeState}`;
+        if (text) text.textContent = label;
+        if (connStateEl) {
+          connStateEl.textContent = connected
+            ? 'Terhubung ke Internet & Server'
+            : (doorState === DOOR_STATES.ERROR ? 'Gangguan Perangkat' : 'Terputus (Offline)');
+        }
+        if (serverCommEl) {
+          serverCommEl.textContent = serverComm || (connected ? 'Aktif' : 'Tidak Aktif');
+        }
+        if (lastSeenEl && lastSeen) {
+          lastSeenEl.textContent = ActivityHistoryManager.formatTimestamp(lastSeen);
+        }
+      }
+
+      function setBusyState(busy, activeLabel = 'Memproses...') {
+        const busyBadge = document.getElementById('controlBusyBadge');
+        const btnOpen = document.getElementById('btnOpenDoor');
+        const btnLock = document.getElementById('btnLockDoor');
+        const btnPass = document.getElementById('btnChangePassword');
+        const btnReconn = document.getElementById('btnReconnectDevice');
+        const passInput = document.getElementById('doorPasswordInput');
+
+        if (busyBadge) busyBadge.textContent = busy ? activeLabel : 'Siap';
+        if (btnOpen) btnOpen.disabled = busy;
+        if (btnLock) btnLock.disabled = busy;
+        if (btnPass) btnPass.disabled = busy;
+        if (btnReconn) btnReconn.disabled = busy;
+        if (passInput) passInput.disabled = busy;
+      }
+
+      return {
+        showToast,
+        openModal,
+        closeModal,
+        applyTheme,
+        syncDemoBadge,
+        renderDeviceInfo,
+        renderDoorStatus,
+        renderConnectionStatus,
+        setBusyState
+      };
+    })();
+
+    /* ===================================================================
+       8. DOOR CONTROL FUNCTIONS
+       Menangani validasi input, pembatasan percobaan gagal, pencegahan
+       perintah berulang, pembukaan pintu (servo), dan penguncian pintu.
+       =================================================================== */
+    const DoorController = (() => {
+      let isCommandInFlight = false;
+      let currentDoorState = DOOR_STATES.CONNECTING;
+      let failedAttempts = 0;
+      let lockoutUntilMs = 0;
+      let pollTimerId = null;
+
+      function isLockedOut() {
+        return Date.now() < lockoutUntilMs;
+      }
+
+      function getRemainingLockoutSeconds() {
+        return Math.max(1, Math.ceil((lockoutUntilMs - Date.now()) / 1000));
+      }
+
+      function updateAttemptLabel() {
+        const label = document.getElementById('attemptCounterLabel');
+        if (!label) return;
+        if (isLockedOut()) {
+          label.textContent = `Terkunci (${getRemainingLockoutSeconds()}d)`;
+        } else {
+          label.textContent = `Percobaan: ${failedAttempts}/${APP_CONFIG.security.maxFailedAttempts}`;
+        }
+      }
+
+      function setControlError(msg) {
+        const errEl = document.getElementById('doorControlError');
+        if (errEl) errEl.textContent = msg || '';
+      }
+
+      function ensureAuthorizedSession() {
+        const session = StorageManager.getSessionInfo();
+        if (!session.authenticated) {
+          UIManager.showToast('Sesi tidak aktif. Silakan masuk sesi terlebih dahulu.', 'warning');
+          setControlError('Sesi pengguna tidak aktif. Klik "Masuk Sesi" di bagian atas.');
+          return false;
+        }
+        return true;
+      }
+
+      async function refreshStatus({ silent = false } = {}) {
+        const prefs = StorageManager.getPreferences();
+        const autoPollEl = document.getElementById('autoPollStatus');
+        if (autoPollEl) {
+          autoPollEl.textContent = prefs.autoPoll ? 'Aktif (tiap 5 dtk)' : 'Dinonaktifkan';
+        }
+
+        try {
+          const statusRes = await DeviceCommunicationManager.getDoorStatus();
+          currentDoorState = statusRes.doorState;
+          UIManager.renderDoorStatus(statusRes.doorState, statusRes.lastSeen);
+          UIManager.renderConnectionStatus({
+            connected: statusRes.connected,
+            doorState: statusRes.doorState,
+            serverComm: statusRes.serverComm,
+            lastSeen: statusRes.lastSeen
+          });
+        } catch (err) {
+          currentDoorState = DOOR_STATES.OFFLINE;
+          UIManager.renderDoorStatus(DOOR_STATES.OFFLINE);
+          UIManager.renderConnectionStatus({
+            connected: false,
+            doorState: DOOR_STATES.OFFLINE,
+            serverComm: err.message || 'Gagal menghubungi server'
+          });
+          if (!silent) {
+            UIManager.showToast(err.message || 'Gagal memperbarui status pintu.', 'error');
+          }
+        }
+      }
+
+      async function handleReconnect() {
+        if (isCommandInFlight) return;
+        isCommandInFlight = true;
+        UIManager.setBusyState(true, 'Menghubungkan...');
+        UIManager.renderDoorStatus(DOOR_STATES.CONNECTING);
+        UIManager.renderConnectionStatus({
+          connected: false,
+          doorState: DOOR_STATES.CONNECTING,
+          serverComm: 'Menghubungkan ulang...'
+        });
+
+        try {
+          const res = await DeviceCommunicationManager.connectToDevice();
+          currentDoorState = res.doorState;
+          UIManager.renderDoorStatus(res.doorState, res.lastSeen);
+          UIManager.renderConnectionStatus({
+            connected: res.connected,
+            doorState: res.doorState,
+            serverComm: res.serverComm,
+            lastSeen: res.lastSeen
+          });
+
+          if (res.connected) {
+            UIManager.showToast('Perangkat ESP32 berhasil terhubung.', 'success');
+            ActivityHistoryManager.addEntry(
+              ACTIVITY_TYPES.SYSTEM_INFO,
+              'Koneksi ESP32 Terhubung',
+              `Status pintu: ${res.doorState}`
+            );
+          } else {
+            UIManager.showToast(res.message || 'ESP32 belum terhubung.', 'warning');
+          }
+        } catch (err) {
+          currentDoorState = DOOR_STATES.OFFLINE;
+          UIManager.renderDoorStatus(DOOR_STATES.OFFLINE);
+          UIManager.renderConnectionStatus({
+            connected: false,
+            doorState: DOOR_STATES.OFFLINE,
+            serverComm: err.message
+          });
+          UIManager.showToast(err.message || 'Gagal menghubungkan ulang ke ESP32.', 'error');
+        } finally {
+          isCommandInFlight = false;
+          UIManager.setBusyState(false);
+        }
+      }
+
+      async function handleOpenDoor(passwordInputValue) {
+        if (isCommandInFlight) {
+          UIManager.showToast('Proses sebelumnya masih berlangsung, harap tunggu.', 'warning');
+          return;
+        }
+
+        if (!ensureAuthorizedSession()) return;
+
+        setControlError('');
+
+        if (isLockedOut()) {
+          const sec = getRemainingLockoutSeconds();
+          const msg = `Terlalu banyak percobaan salah. Tunggu ${sec} detik lagi.`;
+          setControlError(msg);
+          UIManager.showToast(msg, 'error');
+          return;
+        }
+
+        const password = typeof passwordInputValue === 'string' ? passwordInputValue.trim() : '';
+        if (!password) {
+          setControlError('Password pintu wajib diisi.');
+          UIManager.showToast('Silakan masukkan password pintu terlebih dahulu.', 'warning');
+          return;
+        }
+
+        if (password.length > APP_CONFIG.security.maxPasswordLength) {
+          setControlError('Panjang password melebihi batas maksimal.');
+          return;
+        }
+
+        isCommandInFlight = true;
+        const openBtnText = document.getElementById('btnOpenDoorText');
+        const prevBtnLabel = openBtnText ? openBtnText.textContent : 'Buka Pintu';
+        if (openBtnText) openBtnText.innerHTML = `<span class="spinner"></span> Membuka...`;
+        UIManager.setBusyState(true, 'Mengirim ke Servo...');
+
+        try {
+          const result = await DeviceCommunicationManager.openDoor(password);
+
+          if (result && result.confirmed && result.success) {
+            failedAttempts = 0;
+            lockoutUntilMs = 0;
+            updateAttemptLabel();
+
+            const passField = document.getElementById('doorPasswordInput');
+            if (passField) passField.value = '';
+
+            currentDoorState = result.doorState || DOOR_STATES.TERBUKA;
+            UIManager.renderDoorStatus(currentDoorState, result.lastSeen);
+            UIManager.renderConnectionStatus({
+              connected: true,
+              doorState: currentDoorState,
+              serverComm: 'Konfirmasi Servo Diterima',
+              lastSeen: result.lastSeen
+            });
+
+            UIManager.showToast(result.message || 'Pintu berhasil dibuka!', 'success');
+            ActivityHistoryManager.addEntry(
+              ACTIVITY_TYPES.DOOR_OPENED,
+              'Pintu Dibuka',
+              DeviceCommunicationManager.isDemoMode()
+                ? 'Perintah buka pintu terkonfirmasi (Mode Demo).'
+                : 'Perintah buka pintu terkonfirmasi oleh ESP32.'
+            );
+          } else {
+            failedAttempts += 1;
+            if (failedAttempts >= APP_CONFIG.security.maxFailedAttempts) {
+              lockoutUntilMs = Date.now() + APP_CONFIG.security.lockoutDurationMs;
+              failedAttempts = 0;
+            }
+            updateAttemptLabel();
+
+            const failMsg = result?.message || 'Password yang dimasukkan salah.';
+            setControlError(failMsg);
+            UIManager.showToast(failMsg, 'error');
+            ActivityHistoryManager.addEntry(
+              ACTIVITY_TYPES.AUTH_FAILED,
+              'Gagal Membuka Pintu',
+              'Password pintu tidak valid atau ditolak.'
+            );
+          }
+        } catch (err) {
+          const errMsg = err.message || 'Gagal mengirim perintah buka pintu.';
+          setControlError(errMsg);
+          UIManager.showToast(errMsg, 'error');
+          if (errMsg.toLowerCase().includes('offline')) {
+            currentDoorState = DOOR_STATES.OFFLINE;
+            UIManager.renderDoorStatus(DOOR_STATES.OFFLINE);
+            UIManager.renderConnectionStatus({
+              connected: false,
+              doorState: DOOR_STATES.OFFLINE,
+              serverComm: 'ESP32 Offline'
+            });
+          }
+        } finally {
+          isCommandInFlight = false;
+          if (openBtnText) openBtnText.textContent = prevBtnLabel;
+          UIManager.setBusyState(false);
+        }
+      }
+
+      async function handleLockDoor() {
+        if (isCommandInFlight) {
+          UIManager.showToast('Proses sebelumnya masih berlangsung, harap tunggu.', 'warning');
+          return;
+        }
+
+        if (!ensureAuthorizedSession()) return;
+
+        setControlError('');
+        isCommandInFlight = true;
+        const lockBtnText = document.getElementById('btnLockDoorText');
+        const prevLabel = lockBtnText ? lockBtnText.textContent : 'Kunci Pintu';
+        if (lockBtnText) lockBtnText.innerHTML = `<span class="spinner"></span> Mengunci...`;
+        UIManager.setBusyState(true, 'Mengunci Servo...');
+
+        try {
+          const result = await DeviceCommunicationManager.lockDoor();
+
+          if (result && result.confirmed && result.success) {
+            currentDoorState = result.doorState || DOOR_STATES.TERKUNCI;
+            UIManager.renderDoorStatus(currentDoorState, result.lastSeen);
+            UIManager.renderConnectionStatus({
+              connected: true,
+              doorState: currentDoorState,
+              serverComm: 'Kunci Servo Terkonfirmasi',
+              lastSeen: result.lastSeen
+            });
+
+            UIManager.showToast(result.message || 'Pintu berhasil dikunci.', 'success');
+            ActivityHistoryManager.addEntry(
+              ACTIVITY_TYPES.DOOR_LOCKED,
+              'Pintu Dikunci',
+              DeviceCommunicationManager.isDemoMode()
+                ? 'Pintu kembali terkunci (Mode Demo).'
+                : 'Pintu kembali terkunci oleh ESP32.'
+            );
+          } else {
+            const msg = result?.message || 'Gagal mengunci pintu.';
+            setControlError(msg);
+            UIManager.showToast(msg, 'error');
+          }
+        } catch (err) {
+          const msg = err.message || 'Terjadi kesalahan saat mengunci pintu.';
+          setControlError(msg);
+          UIManager.showToast(msg, 'error');
+        } finally {
+          isCommandInFlight = false;
+          if (lockBtnText) lockBtnText.textContent = prevLabel;
+          UIManager.setBusyState(false);
+        }
+      }
+
+      function startAutoPolling() {
+        stopAutoPolling();
+        const prefs = StorageManager.getPreferences();
+        if (!prefs.autoPoll) return;
+
+        pollTimerId = window.setInterval(() => {
+          if (!isCommandInFlight && !document.hidden) {
+            refreshStatus({ silent: true });
+          }
+        }, APP_CONFIG.mqtt.pollIntervalMs);
+      }
+
+      function stopAutoPolling() {
+        if (pollTimerId) {
+          window.clearInterval(pollTimerId);
+          pollTimerId = null;
+        }
+      }
+
+      return {
+        refreshStatus,
+        handleReconnect,
+        handleOpenDoor,
+        handleLockDoor,
+        startAutoPolling,
+        stopAutoPolling,
+        updateAttemptLabel
+      };
+    })();
+
+    /* ===================================================================
+       9. PASSWORD MANAGEMENT
+       Memvalidasi password lama, password baru, konfirmasi password baru,
+       dan mengirim perubahan permanen ke ESP32 melalui backend.
+       =================================================================== */
+    const PasswordManager = (() => {
+      function setError(msg) {
+        const el = document.getElementById('changePasswordError');
+        if (el) el.textContent = msg || '';
+      }
+
+      async function handlePasswordChangeSubmit(event) {
+        event.preventDefault();
+        setError('');
+
+        const session = StorageManager.getSessionInfo();
+        if (!session.authenticated) {
+          setError('Sesi tidak aktif. Silakan masuk sesi terlebih dahulu.');
+          UIManager.showToast('Sesi tidak aktif.', 'warning');
+          return;
+        }
+
+        const oldInput = document.getElementById('oldPasswordInput');
+        const newInput = document.getElementById('newPasswordInput');
+        const confirmInput = document.getElementById('confirmPasswordInput');
+
+        const oldPassword = oldInput ? oldInput.value : '';
+        const newPassword = newInput ? newInput.value : '';
+        const confirmPassword = confirmInput ? confirmInput.value : '';
+
+        if (!oldPassword) {
+          setError('Password lama wajib dimasukkan.');
+          return;
+        }
+
+        if (newPassword.length < APP_CONFIG.security.minPasswordLength) {
+          setError(`Password baru minimal ${APP_CONFIG.security.minPasswordLength} karakter.`);
+          return;
+        }
+
+        if (newPassword.length > APP_CONFIG.security.maxPasswordLength) {
+          setError(`Password baru maksimal ${APP_CONFIG.security.maxPasswordLength} karakter.`);
+          return;
+        }
+
+        if (newPassword !== confirmPassword) {
+          setError('Konfirmasi password baru tidak cocok dengan password baru.');
+          return;
+        }
+
+        if (newPassword === oldPassword) {
+          setError('Password baru sebaiknya berbeda dari password lama.');
+          return;
+        }
+
+        const btnText = document.getElementById('btnChangePasswordText');
+        const prevText = btnText ? btnText.textContent : 'Simpan Password Baru ke ESP32';
+        if (btnText) btnText.innerHTML = `<span class="spinner"></span> Menyimpan ke ESP32...`;
+        UIManager.setBusyState(true, 'Mengubah Password...');
+
+        try {
+          const res = await DeviceCommunicationManager.changeDoorPassword(oldPassword, newPassword);
+
+          if (res && res.confirmed && res.success) {
+            if (oldInput) oldInput.value = '';
+            if (newInput) newInput.value = '';
+            if (confirmInput) confirmInput.value = '';
+
+            UIManager.showToast(res.message || 'Password pintu berhasil diperbarui di ESP32!', 'success');
+            ActivityHistoryManager.addEntry(
+              ACTIVITY_TYPES.PASSWORD_CHANGED,
+              'Password Pintu Diubah',
+              DeviceCommunicationManager.isDemoMode()
+                ? 'Password simulasi diperbarui (Mode Demo).'
+                : 'Password baru tersimpan permanen pada sistem ESP32.'
+            );
+          } else {
+            const msg = res?.message || 'Gagal mengubah password pintu.';
+            setError(msg);
+            UIManager.showToast(msg, 'error');
+            ActivityHistoryManager.addEntry(
+              ACTIVITY_TYPES.AUTH_FAILED,
+              'Gagal Mengubah Password',
+              msg
+            );
+          }
+        } catch (err) {
+          const msg = err.message || 'Terjadi kesalahan saat mengirim password baru.';
+          setError(msg);
+          UIManager.showToast(msg, 'error');
+        } finally {
+          if (btnText) btnText.textContent = prevText;
+          UIManager.setBusyState(false);
+        }
+      }
+
+      return {
+        handlePasswordChangeSubmit
+      };
+    })();
+
+    /* ===================================================================
+       12. APPLICATION INITIALIZATION
+       Menghubungkan seluruh event listener UI, memuat state dari Local
+       Storage, dan menjalankan sinkronisasi awal perangkat.
+       =================================================================== */
+    (function initApp() {
+      function syncSessionUI() {
+        const session = StorageManager.getSessionInfo();
+        const indicator = document.getElementById('sessionIndicator');
+        const btnSession = document.getElementById('btnToggleSession');
+        if (indicator) {
+          indicator.textContent = session.authenticated ? 'Sesi: Terotorisasi' : 'Sesi: Keluar';
+        }
+        if (btnSession) {
+          btnSession.textContent = session.authenticated ? 'Keluar Sesi' : 'Masuk Sesi';
+        }
+      }
+
+      function openBackendConfigModal() {
+        const cfg = StorageManager.getDeviceConfig();
+        const prefs = StorageManager.getPreferences();
+        const bodyHtml = `
+          <div class="form-group">
+            <label for="cfgDeviceName" class="form-label">Nama Perangkat</label>
+            <input type="text" id="cfgDeviceName" class="form-input" style="padding-right:0.9rem;" value="${escapeAttr(cfg.name)}" maxlength="50" />
+          </div>
+          <div class="form-group">
+            <label for="cfgDeviceId" class="form-label">Device ID ESP32</label>
+            <input type="text" id="cfgDeviceId" class="form-input mono" style="padding-right:0.9rem;" value="${escapeAttr(cfg.deviceId)}" maxlength="40" />
+          </div>
+          <div class="form-group">
+            <label for="cfgMqttUrl" class="form-label">URL MQTT WebSocket</label>
+            <input type="url" id="cfgMqttUrl" class="form-input mono" style="padding-right:0.9rem;" value="${escapeAttr(cfg.mqttUrl)}" placeholder="wss://broker.hivemq.com:8884/mqtt" />
+            <div class="helper-text">Gunakan WSS untuk website HTTPS seperti GitHub Pages.</div>
+          </div>
+          <div class="form-group">
+            <label for="cfgTopicPrefix" class="form-label">Topic Prefix</label>
+            <input type="text" id="cfgTopicPrefix" class="form-input mono" style="padding-right:0.9rem;" value="${escapeAttr(cfg.topicPrefix)}" maxlength="120" />
+            <div class="helper-text">Harus sama persis dengan BASE_TOPIC pada program ESP32.</div>
+          </div>
+          <div class="form-group" style="display:flex; flex-direction:column; gap:0.5rem;">
+            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.84rem; cursor:pointer;">
+              <input type="checkbox" id="cfgMqttEnabled" ${cfg.mqttEnabled ? 'checked' : ''} />
+              <span>Aktifkan koneksi MQTT langsung</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.84rem; cursor:pointer;">
+              <input type="checkbox" id="cfgAutoPoll" ${prefs.autoPoll ? 'checked' : ''} />
+              <span>Pembaruan status otomatis tiap 5 detik</span>
+            </label>
+          </div>
+          <p class="helper-text" style="color:#fbbf24;">Broker publik hanya untuk simulasi. Jangan gunakan password pintu asli atau perangkat pintu sungguhan.</p>
+        `;
+
+        UIManager.openModal({
+          title: 'Konfigurasi MQTT & ESP32',
+          bodyHtml,
+          footerButtons: [
+            { label: 'Batal', className: 'btn-ghost', onClick: () => UIManager.closeModal() },
+            {
+              label: 'Simpan Konfigurasi',
+              className: 'btn-primary',
+              onClick: () => {
+                const nameVal = document.getElementById('cfgDeviceName')?.value || '';
+                const idVal = document.getElementById('cfgDeviceId')?.value || '';
+                const urlVal = document.getElementById('cfgMqttUrl')?.value.trim() || '';
+                const topicVal = document.getElementById('cfgTopicPrefix')?.value.trim() || '';
+                const enabledVal = Boolean(document.getElementById('cfgMqttEnabled')?.checked);
+                const autoPollVal = Boolean(document.getElementById('cfgAutoPoll')?.checked);
+
+                if (enabledVal && !(urlVal.startsWith('wss://') || urlVal.startsWith('ws://'))) {
+                  UIManager.showToast('URL MQTT harus diawali wss:// atau ws://.', 'error');
+                  return;
+                }
+                if (!/^[a-zA-Z0-9/_-]{5,120}$/.test(topicVal)) {
+                  UIManager.showToast('Topic Prefix hanya boleh berisi huruf, angka, garis miring, _ atau -.', 'error');
+                  return;
+                }
+
+                DeviceCommunicationManager.disconnectMqtt();
+                StorageManager.saveDeviceConfig({
+                  name: nameVal, deviceId: idVal, mqttUrl: urlVal,
+                  topicPrefix: topicVal, mqttEnabled: enabledVal
+                });
+                StorageManager.savePreferences({ ...StorageManager.getPreferences(), autoPoll: autoPollVal });
+                UIManager.closeModal();
+                UIManager.syncDemoBadge();
+                UIManager.renderDeviceInfo();
+                DoorController.startAutoPolling();
+                DoorController.handleReconnect();
+                UIManager.showToast('Konfigurasi MQTT disimpan.', 'success');
+              }
+            }
+          ]
+        });
+      }
+
+      function openClearHistoryConfirmModal() {
+        UIManager.openModal({
+          title: 'Hapus Riwayat Aktivitas',
+          bodyHtml: `<p style="margin:0; font-size:0.88rem; color:var(--text-secondary);">Apakah Anda yakin ingin menghapus seluruh riwayat aktivitas yang tersimpan di browser ini?</p>`,
+          footerButtons: [
+            {
+              label: 'Batal',
+              className: 'btn-ghost',
+              onClick: () => UIManager.closeModal()
+            },
+            {
+              label: 'Ya, Hapus Semua',
+              className: 'btn-danger-ghost',
+              onClick: () => {
+                ActivityHistoryManager.clearAll();
+                UIManager.closeModal();
+                UIManager.showToast('Riwayat aktivitas telah dihapus.', 'info');
+              }
+            }
+          ]
+        });
+      }
+
+      function escapeAttr(val) {
+        return String(val || '')
+          .replace(/&/g, '&amp;')
+          .replace(/"/g, '&quot;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+      }
+
+      function bindEvents() {
+        // Form Buka Pintu
+        const doorForm = document.getElementById('doorControlForm');
+        if (doorForm) {
+          doorForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const passVal = document.getElementById('doorPasswordInput')?.value || '';
+            DoorController.handleOpenDoor(passVal);
+          });
+        }
+
+        // Tombol Kunci Pintu
+        const btnLock = document.getElementById('btnLockDoor');
+        if (btnLock) {
+          btnLock.addEventListener('click', () => DoorController.handleLockDoor());
+        }
+
+        // Tombol Hubungkan Ulang Perangkat
+        const btnReconn = document.getElementById('btnReconnectDevice');
+        if (btnReconn) {
+          btnReconn.addEventListener('click', () => DoorController.handleReconnect());
+        }
+
+        // Form Ubah Password Pintu
+        const passForm = document.getElementById('changePasswordForm');
+        if (passForm) {
+          passForm.addEventListener('submit', (e) => PasswordManager.handlePasswordChangeSubmit(e));
+        }
+
+        // Tombol Hapus Riwayat Aktivitas
+        const btnClearHist = document.getElementById('btnClearHistory');
+        if (btnClearHist) {
+          btnClearHist.addEventListener('click', () => openClearHistoryConfirmModal());
+        }
+
+        // Toggle Tampilkan/Sembunyikan Password
+        document.querySelectorAll('.toggle-visibility-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const targetId = btn.getAttribute('data-target');
+            const input = targetId ? document.getElementById(targetId) : null;
+            if (!input) return;
+            input.type = input.type === 'password' ? 'text' : 'password';
+          });
+        });
+
+        // Toggle Tema Gelap / Terang
+        const btnTheme = document.getElementById('btnToggleTheme');
+        if (btnTheme) {
+          btnTheme.addEventListener('click', () => {
+            const prefs = StorageManager.getPreferences();
+            const nextTheme = prefs.theme === 'dark' ? 'light' : 'dark';
+            StorageManager.savePreferences({ ...prefs, theme: nextTheme });
+            UIManager.applyTheme(nextTheme);
+          });
+        }
+
+        // Toggle Sesi Aplikasi (riwayat & preferensi tetap dipertahankan di Local Storage)
+        const btnSession = document.getElementById('btnToggleSession');
+        if (btnSession) {
+          btnSession.addEventListener('click', () => {
+            const session = StorageManager.getSessionInfo();
+            const nextAuth = !session.authenticated;
+            StorageManager.saveSessionInfo({ authenticated: nextAuth });
+            syncSessionUI();
+            UIManager.showToast(
+              nextAuth ? 'Sesi aplikasi diaktifkan kembali.' : 'Anda telah keluar dari sesi aplikasi.',
+              'info'
+            );
+          });
+        }
+
+        // Modal Konfigurasi
+        const btnConfig = document.getElementById('btnOpenConfigModal');
+        const btnBannerConfig = document.getElementById('btnBannerConfig');
+        const btnCloseModal = document.getElementById('btnCloseModal');
+        const modalBackdrop = document.getElementById('modalBackdrop');
+
+        if (btnConfig) btnConfig.addEventListener('click', openBackendConfigModal);
+        if (btnBannerConfig) btnBannerConfig.addEventListener('click', openBackendConfigModal);
+        if (btnCloseModal) btnCloseModal.addEventListener('click', () => UIManager.closeModal());
+        if (modalBackdrop) {
+          modalBackdrop.addEventListener('click', (e) => {
+            if (e.target === modalBackdrop) UIManager.closeModal();
+          });
+        }
+
+        // Kontrol Simulasi Mode Demo
+        const btnSimOnline = document.getElementById('btnSimOnline');
+        const btnSimOffline = document.getElementById('btnSimOffline');
+        const btnSimError = document.getElementById('btnSimError');
+
+        if (btnSimOnline) {
+          btnSimOnline.addEventListener('click', () => {
+            DeviceCommunicationManager.setDemoSimulationMode('ONLINE');
+            DoorController.refreshStatus();
+            UIManager.showToast('Simulasi: ESP32 ONLINE.', 'success');
+          });
+        }
+
+        if (btnSimOffline) {
+          btnSimOffline.addEventListener('click', () => {
+            DeviceCommunicationManager.setDemoSimulationMode('OFFLINE');
+            DoorController.refreshStatus();
+            UIManager.showToast('Simulasi: ESP32 OFFLINE.', 'warning');
+          });
+        }
+
+        if (btnSimError) {
+          btnSimError.addEventListener('click', () => {
+            DeviceCommunicationManager.setDemoSimulationMode('ERROR');
+            DoorController.refreshStatus();
+            UIManager.showToast('Simulasi: Terjadi ERROR perangkat.', 'error');
+          });
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const prefs = StorageManager.getPreferences();
+        UIManager.applyTheme(prefs.theme);
+        UIManager.syncDemoBadge();
+        UIManager.renderDeviceInfo();
+        syncSessionUI();
+        ActivityHistoryManager.init();
+        DoorController.updateAttemptLabel();
+        bindEvents();
+
+        // Sinkronisasi status awal dan mulai polling otomatis
+        DoorController.refreshStatus();
+        DoorController.startAutoPolling();
+      });
+    })();
+  </script>
+</body>
+</html>
